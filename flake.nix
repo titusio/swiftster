@@ -33,6 +33,10 @@
 
           # `npm run db:start` needs a compose implementation
           docker-compose
+
+          # Task runner, and the JSON parsing the justfile's tailscale recipes do
+          just
+          jq
         ];
 
         shellHook = ''
