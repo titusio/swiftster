@@ -1,27 +1,54 @@
 import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig({
-	plugins: [
-		tailwindcss(),
-		sveltekit({
-			compilerOptions: {
-				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
-				runes: ({ filename }) => filename.split(/[/\\]/).includes('node_modules') ? undefined : true
-			},
+/**
+ * Hosts Vite will answer to, from `ALLOWED_HOSTS` (comma-separated).
+ * `true` or `*` disables the check entirely — convenient on a trusted LAN,
+ * but it drops Vite's DNS-rebinding protection, so don't use it on an
+ * untrusted network.
+ */
+function allowedHosts(value: string | undefined): string[] | true {
+	const entries =
+		value
+			?.split(',')
+			.map((host) => host.trim())
+			.filter(Boolean) ?? [];
 
-			// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-			// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-			adapter: adapter(),
+	if (entries.some((host) => host === 'true' || host === '*')) return true;
+	return entries;
+}
 
-			typescript: {
-				config: (config) => {
-					config.include.push('../drizzle.config.ts');
+export default defineConfig(({ mode }) => {
+	// '' prefix: load every key, not just VITE_. This file runs in Node only,
+	// so nothing here is exposed to the client.
+	const env = loadEnv(mode, process.cwd(), '');
+	const hosts = allowedHosts(env.ALLOWED_HOSTS);
+
+	return {
+		plugins: [
+			tailwindcss(),
+			sveltekit({
+				compilerOptions: {
+					// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
+					runes: ({ filename }) =>
+						filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+				},
+
+				// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
+				// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
+				// See https://svelte.dev/docs/kit/adapters for more information about adapters.
+				adapter: adapter(),
+
+				typescript: {
+					config: (config) => {
+						config.include.push('../drizzle.config.ts');
+					}
 				}
-			}
-		})
-	]
+			})
+		],
+		server: { allowedHosts: hosts },
+		preview: { allowedHosts: hosts }
+	};
 });
