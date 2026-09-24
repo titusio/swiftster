@@ -24,6 +24,14 @@ check:
 build:
     npm run build
 
+# Rebuild songs.json from the music library.
+index *args:
+    python3 scripts/index-music.py "$MEDIA_DIR" {{ args }}
+
+# Render a printable QR code per track, pointing at PUBLIC_ORIGIN.
+qr *args:
+    python3 scripts/make-qr.py "${MEDIA_INDEX:-$MEDIA_DIR/songs.json}" {{ args }}
+
 # ---------------------------------------------------------------------------
 # Tailscale
 #
@@ -58,7 +66,6 @@ up:
     tailscale serve --bg --https=443 "http://127.0.0.1:{{ port }}" >/dev/null
     echo
     echo "  tailnet → https://$(just _tsname)/"
-    echo "  scanner → https://$(just _tsname)/scan"
     echo
     wait "$dev_pid"
 

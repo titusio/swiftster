@@ -40,8 +40,8 @@
           just
           jq
 
-          # python utilities
-          python3
+          # python utilities; qrcode renders the printable track codes
+          (python3.withPackages (ps: [ps.qrcode]))
         ];
 
         shellHook = ''
