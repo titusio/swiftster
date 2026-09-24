@@ -7,10 +7,15 @@
 	let { data }: { data: PageData } = $props();
 
 	let audio = $state<HTMLAudioElement>();
-	let blocked = $state(false);
+	let paused = $state(true);
+	let ended = $state(false);
 	let answer = $state<Answer | null>(null);
 	let revealing = $state(false);
 	let failed = $state('');
+
+	// Reaching the end leaves `paused` false in some browsers, so the button has
+	// to look at both to know whether anything is actually coming out.
+	let playing = $derived(!paused && !ended);
 
 	onMount(() => {
 		// The lock screen and the system media controls read this. Without it the
@@ -23,16 +28,25 @@
 	});
 
 	async function play() {
-		if (!audio) return;
-
 		try {
-			await audio.play();
-			blocked = false;
+			await audio?.play();
 		} catch {
 			// Autoplay survives a scan made in the app, which carries the tap that
 			// started the camera, but not a cold open from the phone's camera app.
-			blocked = true;
+			// That lands here, and the button is the way in.
 		}
+	}
+
+	function toggle() {
+		if (!audio) return;
+
+		if (playing) {
+			audio.pause();
+			return;
+		}
+
+		if (ended) audio.currentTime = 0;
+		void play();
 	}
 
 	async function reveal() {
@@ -53,8 +67,10 @@
 
 <svelte:head><title>swiftster</title></svelte:head>
 
+<audio bind:this={audio} bind:paused bind:ended src="/api/tracks/{data.id}/stream"></audio>
+
 <div class="mx-auto flex min-h-dvh max-w-md flex-col gap-8 p-6">
-	<div class="flex flex-1 flex-col items-center justify-center gap-6 text-center">
+	<div class="flex flex-1 flex-col items-center justify-center gap-10 text-center">
 		{#if answer}
 			<div>
 				<h1 class="text-2xl font-semibold text-balance">{answer.title}</h1>
@@ -67,20 +83,31 @@
 			</div>
 		{/if}
 
-		{#if blocked}
-			<button
-				type="button"
-				class="rounded-full bg-neutral-900 px-6 py-3 font-medium text-white"
-				onclick={play}
-			>
-				Tap to play
-			</button>
-		{/if}
+		<button
+			type="button"
+			class="grid h-36 w-36 place-items-center rounded-full bg-neutral-900 text-white active:scale-95"
+			aria-label={playing ? 'Pause' : 'Play'}
+			onclick={toggle}
+		>
+			{#if playing}
+				<svg class="h-16 w-16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+				</svg>
+			{:else}
+				<!-- A triangle sits visually left of centre in a circle; nudge it back. -->
+				<svg
+					class="h-16 w-16 translate-x-1"
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					aria-hidden="true"
+				>
+					<path d="M8 5v14l11-7z" />
+				</svg>
+			{/if}
+		</button>
 	</div>
 
 	<div class="space-y-4">
-		<audio bind:this={audio} src="/api/tracks/{data.id}/stream" class="w-full" controls></audio>
-
 		{#if !answer}
 			<button
 				type="button"
