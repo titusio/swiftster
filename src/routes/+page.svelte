@@ -26,7 +26,7 @@
 	<div>
 		<h1 class="text-2xl font-semibold">Scan a card</h1>
 		<p class="mt-1 text-sm text-neutral-500">
-			The track starts playing on its own. Name it before you reveal.
+			The track starts playing on its own. Name it, then turn the card over.
 		</p>
 	</div>
 

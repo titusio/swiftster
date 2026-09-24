@@ -3,16 +3,11 @@
 	import { clip } from '$lib/clip.svelte';
 	import type { PageData } from './$types';
 
-	type Answer = { title: string; artist: string; album: string };
-
 	let { data }: { data: PageData } = $props();
 
 	let audio = $state<HTMLAudioElement>();
 	let paused = $state(true);
 	let ended = $state(false);
-	let answer = $state<Answer | null>(null);
-	let revealing = $state(false);
-	let failed = $state('');
 
 	// Reaching the end leaves `paused` false in some browsers, so the button has
 	// to look at both to know whether anything is actually coming out.
@@ -96,21 +91,6 @@
 		if (playing) audio?.pause();
 		else void play();
 	}
-
-	async function reveal() {
-		revealing = true;
-		failed = '';
-
-		try {
-			const response = await fetch(`/api/tracks/${data.id}`);
-			if (!response.ok) throw new Error(String(response.status));
-			answer = await response.json();
-		} catch {
-			failed = 'Could not load the answer — try again.';
-		} finally {
-			revealing = false;
-		}
-	}
 </script>
 
 <svelte:head><title>swiftster</title></svelte:head>
@@ -119,17 +99,10 @@
 ></audio>
 
 <div class="flex flex-1 flex-col items-center justify-center gap-10 text-center">
-	{#if answer}
-		<div>
-			<h1 class="text-2xl font-semibold text-balance">{answer.title}</h1>
-			<p class="mt-2 text-neutral-500">{answer.artist} · {answer.album}</p>
-		</div>
-	{:else}
-		<div>
-			<h1 class="text-2xl font-semibold">Guess the track</h1>
-			<p class="mt-2 text-neutral-500">Listen, call it out, then reveal.</p>
-		</div>
-	{/if}
+	<div>
+		<h1 class="text-2xl font-semibold">Guess the track</h1>
+		<p class="mt-2 text-neutral-500">Listen, call it out, then turn the card over.</p>
+	</div>
 
 	<button
 		type="button"
@@ -155,23 +128,6 @@
 	</button>
 </div>
 
-<div class="space-y-4">
-	{#if !answer}
-		<button
-			type="button"
-			class="w-full rounded-md bg-neutral-900 px-4 py-3 font-medium text-white disabled:opacity-60"
-			onclick={reveal}
-			disabled={revealing}
-		>
-			{revealing ? 'Revealing…' : 'Reveal'}
-		</button>
-	{/if}
-
-	{#if failed}
-		<p class="text-center text-sm text-red-600">{failed}</p>
-	{/if}
-
-	<a href="/" class="block rounded-md border border-neutral-300 px-4 py-3 text-center font-medium">
-		Scan another
-	</a>
-</div>
+<a href="/" class="block rounded-md border border-neutral-300 px-4 py-3 text-center font-medium">
+	Scan another
+</a>
