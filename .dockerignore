@@ -1,0 +1,26 @@
+.git
+.github
+node_modules
+build
+.svelte-kit
+.output
+
+# The library, the index and the rendered cards are mounted, never baked in.
+music
+
+.env
+.env.*
+!.env.example
+
+.direnv
+.npm-global
+.ruff_cache
+.vscode
+__pycache__
+
+Dockerfile
+.dockerignore
+compose.yaml
+README.md
+AGENTS.md
+LICENSE

@@ -35,12 +35,52 @@ qr *args:
     python3 scripts/make-qr.py "${MEDIA_INDEX:-$MEDIA_DIR/songs.json}" {{ args }}
 
 # ---------------------------------------------------------------------------
-# Tailscale
+# Container
+#
+# The published image from ghcr, not a dev server: this is the one that keeps
+# running. The music library is mounted read-only, so indexing and card
+# rendering still happen out here on the host.
+# ---------------------------------------------------------------------------
+
+# It listens on localhost only; TLS is the reverse proxy's job — see the README.
+
+# Pull the published image and start it.
+[group('container')]
+serve:
+    podman compose pull
+    podman compose up -d
+
+# Stop the container.
+[group('container')]
+unserve:
+    podman compose down
+
+# Follow the container's log.
+[group('container')]
+serve-logs:
+    podman compose logs -f
+
+# Build the image locally, under the name the workflow publishes.
+[group('container')]
+image tag="dev":
+    podman build -t "ghcr.io/titusio/swiftster:{{ tag }}" .
+
+# Re-index, then restart: the server reads songs.json once and keeps it.
+[group('container')]
+serve-index *args:
+    just index {{ args }}
+    podman compose restart
+
+# ---------------------------------------------------------------------------
+# Tailscale — for development.
 #
 # Browsers only expose getUserMedia (camera, for the QR scanner) in a secure
 # context. http://<lan-ip> is not one, so phones refuse to hand over the
 # camera. Tailscale Serve terminates TLS with a publicly-trusted cert, which
-# iOS accepts without installing a profile.
+# iOS accepts without installing a profile, and needs no DNS record.
+#
+# A deployment that stays up wants a real reverse proxy instead; the README
+# has the Caddy and nginx configs.
 # ---------------------------------------------------------------------------
 
 # Dev server + HTTPS proxy in one go. Ctrl-C tears both down.
@@ -71,11 +111,14 @@ up:
     echo
     wait "$dev_pid"
 
-# Point the HTTPS proxy at an already-running dev server.
+# Defaults to the dev server; pass a port to share something else, such as the
+# container's.
+
+# Point the HTTPS proxy at an already-running server.
 [group('tailscale')]
-share:
+share target=port:
     @just _require-tailscale
-    tailscale serve --bg --https=443 "http://127.0.0.1:{{ port }}"
+    tailscale serve --bg --https=443 "http://127.0.0.1:{{ target }}"
 
 # Tear the HTTPS proxy down.
 [group('tailscale')]

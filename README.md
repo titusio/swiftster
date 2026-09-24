@@ -171,6 +171,84 @@ camera app works too, since the code is a plain URL.
 By default only the opening seconds play; the picker in the header sets how
 many, and pressing play again after the clip runs the track to the end.
 
+## Running it for good
+
+`just up` is a dev server, and Tailscale is a good answer while you are still
+changing things: no DNS, no certificate, no port open. For a server that stays
+up, there is a container — GitHub Actions builds it and publishes it to
+`ghcr.io/titusio/swiftster`:
+
+```sh
+just serve
+```
+
+That pulls the image and starts it from `compose.yaml`, listening on
+`127.0.0.1:3000`. `just unserve` stops it, `just serve-logs` follows the log.
+
+Two tags move on their own: `latest` is the newest release, `unstable` is the
+tip of `main`. Set `SWIFTSTER_TAG` in `.env` to pin to a version instead — once
+the deck is printed, a server that only changes when you say so is the point.
+
+The same `.env` drives the container, but only as far as the host: `MEDIA_DIR`
+and `PUBLIC_ORIGIN` are read on *this* side to build the mount and the origin.
+The library is mounted read-only at `/music`, which works because `songs.json`
+stores paths relative to the library root. Keep indexing and `just qr` out here
+in the Nix shell — the image has no Python in it, only the server.
+
+The server reads the index once and keeps it, so a re-index needs a restart:
+`just serve-index` does both. If you set `MEDIA_INDEX` outside the library, add
+a mount for it in `compose.yaml`.
+
+Under Docker rather than rootless podman, drop `userns_mode: keep-id` from
+`compose.yaml` and make the library readable by uid 1000.
+
+### The reverse proxy
+
+The container speaks plain HTTP and trusts whatever is in front of it, so
+something has to terminate TLS. That is not a nicety: browsers only expose the
+camera in a secure context, and without it no phone can scan a card.
+
+Caddy gets a certificate on its own and needs three lines:
+
+```caddyfile
+swiftster.example.com {
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+nginx needs to be told not to get in the way of the audio. The stream endpoint
+serves byte ranges so the player can seek, and buffering a FLAC through the
+proxy first makes a track take seconds to start:
+
+```nginx
+server {
+	listen 443 ssl;
+	http2 on;
+	server_name swiftster.example.com;
+
+	# certbot, or wherever your certificates come from
+	ssl_certificate     /etc/letsencrypt/live/swiftster.example.com/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/swiftster.example.com/privkey.pem;
+
+	location / {
+		proxy_pass http://127.0.0.1:3000;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-Proto $scheme;
+
+		# Hand the ranged FLAC straight through.
+		proxy_buffering off;
+		proxy_request_buffering off;
+	}
+}
+```
+
+Whatever the proxy, `PUBLIC_ORIGIN` has to be the name it answers to, because
+`compose.yaml` passes it to the server as `ORIGIN` and that is the origin
+already printed on every card. Pick the name before you print, not after: a
+domain you control can be moved to another machine later, and a tailnet name
+cannot follow you off the tailnet.
+
 ## Commands
 
 | command | |
@@ -180,8 +258,11 @@ many, and pressing play again after the clip runs the track to the end.
 | `just qr [args]` | render `cards.pdf` and the SVGs |
 | `just dev` | dev server on the LAN, no HTTPS |
 | `just up` | dev server plus the Tailscale HTTPS proxy |
-| `just share` / `just unshare` | point the proxy at an already-running server, or tear it down |
+| `just share [port]` / `just unshare` | point the tailnet proxy at an already-running server, or tear it down |
 | `just url` / `just status` | the tailnet URL, what is being proxied |
+| `just serve` / `just unserve` | start or stop the published container |
+| `just serve-index [-v]` | re-index and restart the container |
+| `just image [tag]` | build the container image here instead of pulling it |
 | `just check` | type-check |
 | `just build` | production build |
 

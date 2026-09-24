@@ -1,0 +1,39 @@
+# swiftster, from the image GitHub Actions publishes.
+#
+# MEDIA_DIR and PUBLIC_ORIGIN are interpolated from .env — the same file the
+# `just` recipes read. Note that .env is deliberately *not* passed into the
+# container: its MEDIA_DIR is a host path and means nothing in here.
+#
+#   podman compose pull && podman compose up -d
+#
+# The server binds to localhost and speaks plain HTTP. TLS belongs to a reverse
+# proxy in front of it — the README has Caddy and nginx configs. It is not
+# optional: browsers only hand over the camera in a secure context, so a plain
+# http:// origin cannot scan a card.
+
+services:
+  swiftster:
+    # `latest` is the newest release; `unstable` is the tip of main. Pin to a
+    # version (or a sha) once cards are printed and you want the server still.
+    image: ghcr.io/titusio/swiftster:${SWIFTSTER_TAG:-latest}
+    container_name: swiftster
+    restart: unless-stopped
+
+    # Localhost only. Tailscale Serve is what reaches the phones. Its own port,
+    # not the justfile's PORT — that one belongs to the dev server.
+    ports:
+      - '127.0.0.1:${SWIFTSTER_PORT:-3000}:3000'
+
+    volumes:
+      - ${MEDIA_DIR}:/music:ro
+
+    environment:
+      MEDIA_DIR: /music
+      # adapter-node's idea of the public origin. Keep it identical to
+      # PUBLIC_ORIGIN: that is the origin the printed QR codes point at.
+      ORIGIN: ${PUBLIC_ORIGIN}
+
+    # Rootless podman: map the host user into the container, so the mounted
+    # library is readable. `keep-id` is podman's; under Docker drop this line
+    # and instead make the library readable by uid 1000.
+    userns_mode: keep-id
