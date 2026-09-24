@@ -140,13 +140,16 @@ def parse_args() -> argparse.Namespace:
                     "<track>-<title>-<id>.flac and write it out as JSON.",
     )
     parser.add_argument(
-        "music_dir",
-        help="root of the music library to scan",
+        "--media-dir",
+        default=os.environ.get("MEDIA_DIR"),
+        help="root of the music library to scan (default: $MEDIA_DIR)",
     )
     parser.add_argument(
         "-o",
         "--output",
-        help="where to write the JSON (default: songs.json inside MUSIC_DIR)",
+        default=os.environ.get("MEDIA_INDEX"),
+        help="where to write the JSON (default: $MEDIA_INDEX, or songs.json "
+             "inside the library)",
     )
     parser.add_argument(
         "-v",
@@ -160,12 +163,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    if not isdir(args.music_dir):
-        print(f"not a directory: {args.music_dir}")
+    if not args.media_dir:
+        print("no music library: pass --media-dir or set MEDIA_DIR")
         return 1
 
-    output = args.output or join(args.music_dir, "songs.json")
-    songs = collect(args.music_dir)
+    if not isdir(args.media_dir):
+        print(f"not a directory: {args.media_dir}")
+        return 1
+
+    output = args.output or join(args.media_dir, "songs.json")
+    songs = collect(args.media_dir)
 
     if args.verbose:
         for song in songs:

@@ -14,15 +14,15 @@ Everything lives in the flake: `nix develop`, or `nix develop --command <cmd>`
 for one-offs. `python3`, `just` and `ruff` are not on the bare PATH.
 
 `.env` is not loaded by `nix develop`. `just` loads it, so prefer the recipes;
-running a script directly means passing `--origin` and the library path
-yourself.
+running a script directly means passing `--media-dir`, `--index` and `--origin`
+yourself, since those flags default to the environment.
 
 A dev server is usually already running on `127.0.0.1:5173` — curl it instead of
 starting another. If one is not running, ask before starting one.
 
 ```sh
 just index -v        # rebuild songs.json from $MEDIA_DIR
-just qr              # render music/qr/cards.pdf and the per-track SVGs
+just qr              # render qr/cards.pdf and the SVGs beside the index
 just check           # svelte-check; keep it at 0 errors
 nix develop --command ruff check scripts/
 ```

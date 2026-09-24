@@ -281,8 +281,16 @@ def parse_args() -> argparse.Namespace:
                     "the back.",
     )
     parser.add_argument(
-        "index",
-        help="path to songs.json",
+        "--index",
+        default=os.environ.get("MEDIA_INDEX"),
+        help="path to songs.json (default: $MEDIA_INDEX, or songs.json inside "
+             "the library)",
+    )
+    parser.add_argument(
+        "--media-dir",
+        default=os.environ.get("MEDIA_DIR"),
+        help="root of the music library, which is where the index is looked "
+             "for (default: $MEDIA_DIR)",
     )
     parser.add_argument(
         "--origin",
@@ -359,8 +367,14 @@ def main() -> int:
         print(f"origin must be a URL like https://host.example: {args.origin}")
         return 1
 
-    if not isfile(args.index):
-        print(f"not a file: {args.index}")
+    index = args.index or (join(args.media_dir, "songs.json") if args.media_dir else "")
+    if not index:
+        print("no index: pass --index or --media-dir, or set MEDIA_INDEX "
+              "or MEDIA_DIR")
+        return 1
+
+    if not isfile(index):
+        print(f"not a file: {index}")
         return 1
 
     page_w, page_h = (side * mm for side in PAGES[args.page])
@@ -376,14 +390,14 @@ def main() -> int:
               f"with a {args.margin_mm:g}mm margin")
         return 1
 
-    with open(args.index, encoding="utf-8") as f:
+    with open(index, encoding="utf-8") as f:
         songs = [song for song in json.load(f) if song.get("id")]
 
     if not songs:
-        print(f"no songs with an id in {args.index}")
+        print(f"no songs with an id in {index}")
         return 1
 
-    output = args.output or join(dirname(args.index) or ".", "qr")
+    output = args.output or join(dirname(index) or ".", "qr")
     os.makedirs(output, exist_ok=True)
 
     matrices = {}

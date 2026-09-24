@@ -5,6 +5,10 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set dotenv-load := true
 
+# Recipe arguments reach the shell as "$@" rather than being pasted into the
+# command line, so a path with a space in it stays one argument.
+set positional-arguments := true
+
 # Vite's port. Pinned rather than auto-incrementing, so `tailscale serve`
 # always proxies to the port we actually started. Override with PORT in .env.
 port := env("PORT", "5173")
@@ -24,15 +28,19 @@ check:
 build:
     npm run build
 
+# The library, the index and the origin default to MEDIA_DIR, MEDIA_INDEX and
+# PUBLIC_ORIGIN; --media-dir, --index, --origin and -o override them for one
+# run. `--help` lists the rest.
+
 # Rebuild songs.json from the music library.
 index *args:
-    python3 scripts/index-music.py "$MEDIA_DIR" {{ args }}
+    python3 scripts/index-music.py "$@"
 
 # Render printable cards — a QR code per track pointing at PUBLIC_ORIGIN, with
 # the track's name on the back — plus one SVG per code. Print cards.pdf
 # double-sided, at 100%.
 qr *args:
-    python3 scripts/make-qr.py "${MEDIA_INDEX:-$MEDIA_DIR/songs.json}" {{ args }}
+    python3 scripts/make-qr.py "$@"
 
 # ---------------------------------------------------------------------------
 # Container
@@ -68,7 +76,7 @@ image tag="dev":
 # Re-index, then restart: the server reads songs.json once and keeps it.
 [group('container')]
 serve-index *args:
-    just index {{ args }}
+    just index "$@"
     podman compose restart
 
 # ---------------------------------------------------------------------------

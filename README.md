@@ -40,6 +40,10 @@ Then fill in `.env`:
 | `PUBLIC_ORIGIN` | the origin baked into the printed QR codes |
 | `ALLOWED_HOSTS` | hostnames Vite will serve |
 
+The first three are defaults, not fixtures: `--media-dir`, `--index`, `--origin`
+and `-o` override them for a single run, which is how you index a second library
+or render a set of codes for a different origin without touching `.env`.
+
 ## Getting the files right
 
 This is the part that takes the care. The indexer reads the *library layout*,
@@ -113,7 +117,7 @@ ffmpeg -i "in.m4a" -c:a flac -map_metadata 0 "out.flac"
 just index -v
 ```
 
-That walks `MEDIA_DIR` and writes `songs.json` next to it — one entry per track
+That walks `MEDIA_DIR` and writes `songs.json` inside it — one entry per track
 with its id, artist, album, track number, title, year and relative path. `-v`
 prints each song as it goes:
 
@@ -125,6 +129,16 @@ Read the list before printing anything. A song you expected and don't see has a
 filename the pattern rejected; a `(????)` instead of a year means no usable
 copyright or date tag. The server reads the index once and keeps it, so restart
 it after re-indexing.
+
+To index somewhere other than `MEDIA_DIR`, or to keep the index out of the
+library, pass the paths instead:
+
+```sh
+just index --media-dir "/srv/music" -o "/srv/swiftster/songs.json"
+```
+
+Point `MEDIA_DIR` and `MEDIA_INDEX` at the same two paths before serving, since
+the server resolves each song's relative path against its own `MEDIA_DIR`.
 
 The library and the index are gitignored; only the scripts are in the repo.
 
@@ -254,7 +268,7 @@ cannot follow you off the tailnet.
 | command | |
 | --- | --- |
 | `just` | list every recipe |
-| `just index [-v]` | rebuild `songs.json` from the library |
+| `just index [args]` | rebuild `songs.json` from the library |
 | `just qr [args]` | render `cards.pdf` and the SVGs |
 | `just dev` | dev server on the LAN, no HTTPS |
 | `just up` | dev server plus the Tailscale HTTPS proxy |
@@ -266,8 +280,9 @@ cannot follow you off the tailnet.
 | `just check` | type-check |
 | `just build` | production build |
 
-`just qr --help` and `just index --help` list the rest of the flags: card size,
-paper, margins, quiet zone, where to write.
+Both recipes pass their arguments straight through, so `just qr --help` and
+`just index --help` list the rest of the flags: which library, index and origin
+to use, card size, paper, margins, quiet zone, where to write.
 
 ## How it fits together
 
