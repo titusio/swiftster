@@ -45,7 +45,10 @@ def collect(path: str) -> list[Song]:
                 artist=artist,
                 album=album,
                 title=title,
-                path=join(root, filename),
+                # Relative to the library root, so the index stays valid
+                # wherever the library is mounted. The server joins it
+                # back onto MEDIA_DIR.
+                path=join(*parts, filename),
             )))
 
         # os.walk yields files in arbitrary order; restore the album's track order.

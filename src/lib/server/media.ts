@@ -1,10 +1,11 @@
-import { readdir, stat } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { readFile, stat } from 'node:fs/promises';
+import { extname, isAbsolute, join, resolve } from 'node:path';
 import { env } from '$env/dynamic/private';
 
 export type Track = {
 	id: string;
 	title: string;
+	artist: string;
 	album: string;
 	path: string;
 	mimeType: string;
@@ -24,48 +25,59 @@ function mediaDir(): string {
 	return env.MEDIA_DIR;
 }
 
-/**
- * Filenames look like `10-The Way I Loved You (Taylor's Version)-179708914.flac`.
- * The trailing numeric segment is a stable id; fall back to the whole basename.
- */
-function parseName(file: string): { id: string; title: string } {
-	const base = file.slice(0, -extname(file).length);
-	const match = /^(?:\d+-)?(.*)-(\d+)$/.exec(base);
-	if (match) return { id: match[2], title: match[1] };
-	return { id: base, title: base };
+/** The index written by `scripts/index-music.py`. */
+function indexFile(): string {
+	return env.MEDIA_INDEX || join(mediaDir(), 'songs.json');
 }
+
+/** One entry of songs.json, before we trust any of it. */
+type Entry = Partial<Record<keyof Omit<Track, 'mimeType'>, unknown>>;
 
 let index: Map<string, Track> | null = null;
 
-async function scan(dir: string, album: string, into: Map<string, Track>): Promise<void> {
-	const entries = await readdir(dir, { withFileTypes: true });
+async function load(): Promise<Map<string, Track>> {
+	const file = indexFile();
 
-	for (const entry of entries) {
-		const full = join(dir, entry.name);
+	let entries: unknown;
+	try {
+		entries = JSON.parse(await readFile(file, 'utf-8'));
+	} catch (cause) {
+		throw new Error(`could not read the music index at ${file}`, { cause });
+	}
 
-		if (entry.isDirectory()) {
-			await scan(full, entry.name, into);
-			continue;
-		}
+	if (!Array.isArray(entries)) throw new Error(`${file} is not a JSON array`);
 
-		const mimeType = MIME_TYPES[extname(entry.name).toLowerCase()];
+	const built = new Map<string, Track>();
+
+	for (const entry of entries as Entry[]) {
+		const { id, title, artist, album, path } = entry;
+		if (typeof id !== 'string' || typeof path !== 'string') continue;
+
+		const mimeType = MIME_TYPES[extname(path).toLowerCase()];
 		if (!mimeType) continue;
 
-		const { id, title } = parseName(entry.name);
-		into.set(id, { id, title, album, path: full, mimeType });
+		built.set(id, {
+			id,
+			title: typeof title === 'string' ? title : id,
+			artist: typeof artist === 'string' ? artist : '',
+			album: typeof album === 'string' ? album : '',
+			// The indexer may write either absolute paths or ones relative to the
+			// library root, depending on where it was run from.
+			path: isAbsolute(path) ? path : resolve(mediaDir(), path),
+			mimeType
+		});
 	}
+
+	return built;
 }
 
 export async function getIndex(): Promise<Map<string, Track>> {
 	if (index) return index;
-
-	const built = new Map<string, Track>();
-	await scan(mediaDir(), '', built);
-	index = built;
+	index = await load();
 	return index;
 }
 
-/** Drop the cached index so the next request re-scans the library. */
+/** Drop the cached index so the next request re-reads songs.json. */
 export function invalidateIndex(): void {
 	index = null;
 }
@@ -77,7 +89,12 @@ export async function getTrack(id: string): Promise<Track | undefined> {
 export async function listTracks(): Promise<Omit<Track, 'path'>[]> {
 	return [...(await getIndex()).values()]
 		.map(({ path: _path, ...track }) => track)
-		.sort((a, b) => a.album.localeCompare(b.album) || a.title.localeCompare(b.title));
+		.sort(
+			(a, b) =>
+				a.artist.localeCompare(b.artist) ||
+				a.album.localeCompare(b.album) ||
+				a.title.localeCompare(b.title)
+		);
 }
 
 export async function trackSize(track: Track): Promise<number> {
