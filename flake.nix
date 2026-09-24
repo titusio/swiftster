@@ -1,5 +1,5 @@
 {
-  description = "swiftster — SvelteKit + Drizzle + Postgres development environment";
+  description = "swiftster — SvelteKit development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -30,12 +30,6 @@
           ruff
           prettier
 
-          # psql, pg_dump etc. against the compose.yaml database
-          postgresql_17
-
-          # `npm run db:start` needs a compose implementation
-          docker-compose
-
           # Task runner, and the JSON parsing the justfile's tailscale recipes do
           just
           jq
@@ -47,7 +41,7 @@
 
         shellHook = ''
           # Keep `npm i -g` inside the project instead of $HOME, and put
-          # locally installed binaries (vite, drizzle-kit, ...) on PATH.
+          # locally installed binaries (vite, svelte-check, ...) on PATH.
           export NPM_CONFIG_PREFIX="$PWD/.npm-global"
           export PATH="$NPM_CONFIG_PREFIX/bin:$PWD/node_modules/.bin:$PATH"
 
