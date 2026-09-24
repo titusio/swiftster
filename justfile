@@ -29,8 +29,8 @@ index *args:
     python3 scripts/index-music.py "$MEDIA_DIR" {{ args }}
 
 # Render printable cards — a QR code per track pointing at PUBLIC_ORIGIN, with
-# the track's name on the back — plus one SVG per code. Print cards.html
-# double-sided.
+# the track's name on the back — plus one SVG per code. Print cards.pdf
+# double-sided, at 100%.
 qr *args:
     python3 scripts/make-qr.py "${MEDIA_INDEX:-$MEDIA_DIR/songs.json}" {{ args }}
 

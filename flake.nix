@@ -40,8 +40,9 @@
           just
           jq
 
-          # python utilities; qrcode renders the printable track codes
-          (python3.withPackages (ps: [ps.qrcode]))
+          # python utilities; qrcode renders the track codes, reportlab lays
+          # them out as the printable card sheet
+          (python3.withPackages (ps: [ps.qrcode ps.reportlab]))
         ];
 
         shellHook = ''
