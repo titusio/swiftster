@@ -138,6 +138,7 @@ def back_lines(song: dict, width: float, card: float) -> list[Line]:
     artist = str(song.get("artist") or "").strip()
     title = str(song.get("title") or song["id"]).strip()
     album = str(song.get("album") or "").strip()
+    year = song.get("year")
     track = song.get("trackNumber")
 
     lines: list[Line] = []
@@ -160,6 +161,10 @@ def back_lines(song: dict, width: float, card: float) -> list[Line]:
             Line(w, "Helvetica", size, GREY, size * 1.25, space=card * 0.03 if i == 0 else 0)
             for i, w in enumerate(wrapped)
         ]
+
+    if year:
+        size = card * 0.07
+        lines.append(Line(str(year), "Helvetica-Bold", size, black, size * 1.2, card * 0.035))
 
     if track:
         size = card * 0.042

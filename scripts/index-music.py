@@ -6,6 +6,10 @@ import re
 from dataclasses import asdict, dataclass
 
 NAME = re.compile(r"^(\d+)-(.+)-(\d+)\.flac$")
+YEAR = re.compile(r"(?:19|20)\d\d")
+
+# FLAC metadata block type 4 is the Vorbis comment block.
+COMMENT_BLOCK = 4
 
 
 @dataclass
@@ -15,10 +19,77 @@ class Song:
     album: str
     trackNumber: int
     title: str
+    year: int | None
     path: str
 
     def __str__(self) -> str:
-        return f"{self.artist} - {self.album} - [{self.trackNumber}] {self.title} ({self.id})"
+        return (
+            f"{self.artist} - {self.album} - [{self.trackNumber}] "
+            f"{self.title} ({self.year or '????'}) ({self.id})"
+        )
+
+
+def comments(path: str) -> dict[str, str]:
+    """
+    The file's Vorbis comments, keyed by upper-cased tag name.
+
+    A FLAC is the marker "fLaC" followed by metadata blocks, each a four-byte
+    header — a last-block flag, a type, and a 24-bit big-endian length — then
+    that many bytes of body. The comment block holds a vendor string and a
+    list of "NAME=value" strings, all of them length-prefixed little-endian.
+    """
+    tags: dict[str, str] = {}
+
+    try:
+        with open(path, "rb") as f:
+            if f.read(4) != b"fLaC":
+                return tags
+
+            while True:
+                header = f.read(4)
+                if len(header) < 4:
+                    return tags
+
+                last = header[0] & 0x80
+                body = f.read(int.from_bytes(header[1:], "big"))
+
+                if header[0] & 0x7F == COMMENT_BLOCK:
+                    break
+                if last:
+                    return tags
+    except OSError:
+        return tags
+
+    at = 4 + int.from_bytes(body[:4], "little")
+    count = int.from_bytes(body[at:at + 4], "little")
+    at += 4
+
+    for _ in range(count):
+        size = int.from_bytes(body[at:at + 4], "little")
+        at += 4
+        name, _, value = body[at:at + size].decode("utf-8", "replace").partition("=")
+        at += size
+        # A tag may repeat; the first one wins.
+        tags.setdefault(name.upper(), value)
+
+    return tags
+
+
+def released(tags: dict[str, str]) -> int | None:
+    """
+    The year the recording in the file came out.
+
+    The phonogram year first: DATE is the album's, which for a re-recording
+    may be the year of the album it re-records — Fearless (Taylor's Version)
+    is tagged 2008. Both versions of a song can end up in the deck, so they
+    have to date apart.
+    """
+    for tag in ("COPYRIGHT", "DATE", "YEAR"):
+        found = YEAR.search(tags.get(tag, ""))
+        if found:
+            return int(found.group())
+
+    return None
 
 
 def collect(path: str) -> list[Song]:
@@ -47,6 +118,7 @@ def collect(path: str) -> list[Song]:
                 album=album,
                 trackNumber=0,
                 title=title,
+                year=released(comments(join(root, filename))),
                 # Relative to the library root, so the index stays valid
                 # wherever the library is mounted. The server joins it
                 # back onto MEDIA_DIR.
