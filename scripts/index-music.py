@@ -13,11 +13,12 @@ class Song:
     id: str
     artist: str
     album: str
+    trackNumber: int
     title: str
     path: str
 
     def __str__(self) -> str:
-        return f"{self.artist} - {self.album} - {self.title} ({self.id})"
+        return f"{self.artist} - {self.album} - [{self.trackNumber}] {self.title} ({self.id})"
 
 
 def collect(path: str) -> list[Song]:
@@ -44,6 +45,7 @@ def collect(path: str) -> list[Song]:
                 id=id,
                 artist=artist,
                 album=album,
+                trackNumber=0,
                 title=title,
                 # Relative to the library root, so the index stays valid
                 # wherever the library is mounted. The server joins it
@@ -53,6 +55,8 @@ def collect(path: str) -> list[Song]:
 
         # os.walk yields files in arbitrary order; restore the album's track order.
         tracks.sort(key=lambda t: t[0])
+        for i in range(len(tracks)):
+            tracks[i][1].trackNumber = i + 1
         songs.extend(song for _, song in tracks)
 
     return songs
