@@ -26,6 +26,8 @@
           typescript-language-server
           vscode-langservers-extracted
           tailwindcss-language-server
+          pyright
+          ruff
           prettier
 
           # psql, pg_dump etc. against the compose.yaml database
@@ -37,6 +39,9 @@
           # Task runner, and the JSON parsing the justfile's tailscale recipes do
           just
           jq
+
+          # python utilities
+          python3
         ];
 
         shellHook = ''
