@@ -56,13 +56,13 @@ only the release year comes out of the file itself.
 $MEDIA_DIR/
 └── <artist>/
     └── <album>/
-        └── <track>-<title>-<id>.flac
+        └── <track>-<title>-<id>.<ext>
 ```
 
 Exactly two levels deep: a directory that is not `<artist>/<album>/` is walked
 but never indexed, so cover art and a stray `songs.json` do no harm.
 
-The filename has to match `^(\d+)-(.+)-(\d+)\.flac$`, and anything that doesn't
+The filename has to match `^(\d+)-(.+)-(\d+)\.<ext>$`, and anything that doesn't
 is skipped silently:
 
 - **`<track>`** — the track's position in the album. Only the ordering matters:
@@ -75,6 +75,15 @@ is skipped silently:
   points at, so treat it as permanent: **re-using or renumbering an id
   invalidates a card that is already printed.** Whatever your ripper or tagger
   assigns works, as long as it never collides.
+- **`<ext>`** — `flac`, `mp3`, `m4a`, `ogg`, `opus` or `wav`, in any case. The
+  indexer and the server agree on that list; a format outside it is skipped
+  rather than indexed, because a card for a track the server cannot serve is a
+  card that scans to a 404.
+
+Formats mix freely, in the same library and the same album. The one thing to
+avoid is keeping two copies of the *same* song — the m4a you started with and
+the FLAC you converted it to — because they share an id, and two cards would
+then carry the same code. The indexer says so when it sees one.
 
 Both an original album and its re-recording can live in the library at once.
 They are separate directories with separate ids, so `Fearless` and `Fearless
@@ -83,7 +92,17 @@ They are separate directories with separate ids, so `Fearless` and `Fearless
 ### Tags
 
 One tag is read, and only one: the release year, from the first four-digit year
-found in **`COPYRIGHT`**, falling back to `DATE` and then `YEAR`.
+found in **`COPYRIGHT`**, falling back to `DATE` and then `YEAR`. Those are
+Vorbis names, and every format answers to them — each container keeps its tags
+somewhere else, so the indexer has a reader per format and they all report back
+in the same three names:
+
+| format | where the year comes from |
+| --- | --- |
+| `flac`, `ogg`, `opus` | Vorbis comments — `COPYRIGHT`, `DATE` |
+| `mp3` | ID3v2 `TCOP`, `TDRC`, `TDRL`, `TYER`, or the ID3v1 year |
+| `m4a` | the iTunes atoms `cprt` and `©day` |
+| `wav` | the RIFF INFO fields `ICOP` and `ICRD` |
 
 The phonogram year comes first on purpose. `DATE` is the *album's* date and lies
 about re-recordings — every track of *Fearless (Taylor's Version)* is tagged
@@ -97,15 +116,25 @@ any string holding the year will do:
 
 ```sh
 metaflac --set-tag="COPYRIGHT=℗ 2008 Taylor Swift" *.flac
+ffmpeg -i in.m4a -c copy -metadata copyright="℗ 2008 Taylor Swift" out.m4a
 ```
+
+Lossy downloads are the ones to check: a rip that came from somewhere other than
+a shop often carries no year at all, and a card with no year on it is a card you
+cannot place. `just index -v` counts them for you.
 
 Everything else in the tags — titles, track numbers, lyrics, credits — is
 ignored, so it does not matter if it is wrong.
 
 ### Converting
 
-FLAC is what the indexer picks up. Converting from anything else, keep the
-metadata:
+Nothing has to be converted: every format in the table plays as it is, and the
+stream endpoint serves byte ranges whatever the container. Converting for the
+sake of it costs quality — re-encoding an m4a as FLAC makes the file several
+times larger without putting back anything the lossy encoder threw away.
+
+If you do convert, keep the metadata, and delete the original rather than
+leaving both in the album:
 
 ```sh
 ffmpeg -i "in.m4a" -c:a flac -map_metadata 0 "out.flac"
@@ -126,8 +155,10 @@ Taylor Swift - Fearless (Platinum Edition) - [1] Jump Then Fall (2009) (3169104)
 ```
 
 Read the list before printing anything. A song you expected and don't see has a
-filename the pattern rejected; a `(????)` instead of a year means no usable
-copyright or date tag. The server reads the index once and keeps it, so restart
+filename the pattern rejected, or an extension outside the table above; a
+`(????)` instead of a year means no usable copyright or date tag. After the list
+come the two things worth knowing before anything reaches paper: how many songs
+have no year, and any id that more than one file claims. The server reads the index once and keeps it, so restart
 it after re-indexing.
 
 To index somewhere other than `MEDIA_DIR`, or to keep the index out of the
@@ -294,8 +325,8 @@ to use, card size, paper, margins, quiet zone, where to write.
 
 ## How it fits together
 
-- `scripts/index-music.py` — walks the library, reads the FLAC comment block,
-  writes `songs.json`.
+- `scripts/index-music.py` — walks the library, reads the year out of whichever
+  tag block the format keeps it in, writes `songs.json`.
 - `scripts/make-qr.py` — the QR codes and the printable PDF, drawn with
   reportlab.
 - `src/lib/server/media.ts` — loads and caches the index, resolves track paths.

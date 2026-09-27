@@ -43,6 +43,13 @@ under `/api/tracks` return metadata by design; the game does not call them.
 are already printed on cards. Never change how an id is derived, and never
 renumber a library to make something tidier.
 
+**The indexer and the server have to agree on which formats exist.** `READERS` in
+`scripts/index-music.py` is the list of extensions a library may hold, and it has
+to stay a subset of `MIME_TYPES` in `src/lib/server/media.ts`. The server drops an
+entry whose extension it cannot type, so indexing a format it does not serve
+prints a card that scans to a 404. A new format needs both ends and a tag reader
+for wherever that container keeps its year.
+
 **Duplex geometry is easy to break and invisible until it is printed.** Backs are
 laid out mirrored so each one lands behind its own front: columns reverse for a
 long-edge flip, and a short-edge flip additionally rotates the whole page. A
