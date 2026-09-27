@@ -185,6 +185,14 @@ camera app works too, since the code is a plain URL.
 By default only the opening seconds play; the picker in the header sets how
 many, and pressing play again after the clip runs the track to the end.
 
+The switch beside it drops the needle somewhere random in the track instead of
+at the first bar — no intros to recognise, which is a good deal harder. The
+point is picked once per scan and stays the round's beginning, so a replay comes
+back to it; the last twenty seconds are left out so nothing starts in the outro.
+
+Both settings are remembered between rounds. Changing the length re-cuts the
+round you are in; flipping the switch takes effect on the next card.
+
 ## Running it for good
 
 `just up` is a dev server, and Tailscale is a good answer while you are still

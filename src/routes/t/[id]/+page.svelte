@@ -22,6 +22,19 @@
 	let limited = false;
 	let frame: number | null = null;
 
+	// Where this round begins. A random round stands somewhere else in the track
+	// in place of the first bar, and that point stays the round's beginning, so a
+	// replay comes back to it rather than to the top.
+	let start = 0;
+
+	// Reserved at the end of a random round's track, so the needle never lands in
+	// the outro with nothing left to guess by. A clip longer than this reserves
+	// its own length instead.
+	const TAIL_SECONDS = 20;
+
+	// How long a random round waits for the duration before starting at the top.
+	const METADATA_MS = 2000;
+
 	onMount(() => {
 		// The lock screen and the system media controls read this. Without it the
 		// browser falls back to the file's own tags, which hands over the answer.
@@ -67,10 +80,40 @@
 		frame = requestAnimationFrame(watch);
 	}
 
+	/**
+	 * The duration, once the metadata is in. Waiting for it delays the round, so
+	 * the wait gives up: iOS is free to preload nothing until something plays, and
+	 * a round that starts at the top beats one that never starts at all.
+	 */
+	function duration(el: HTMLAudioElement): Promise<number> {
+		if (el.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve(el.duration);
+
+		return new Promise((resolve) => {
+			// NaN until the metadata lands, which reads as no room and starts at the top.
+			const answer = () => resolve(el.duration);
+
+			el.addEventListener('loadedmetadata', answer, { once: true });
+			el.addEventListener('error', answer, { once: true });
+			setTimeout(answer, METADATA_MS);
+		});
+	}
+
+	/** Drop the needle somewhere in the track, leaving room for the clip. */
+	async function place(el: HTMLAudioElement) {
+		const room = (await duration(el)) - Math.max(clip.seconds, TAIL_SECONDS);
+		if (!Number.isFinite(room) || room <= 0) return;
+
+		start = Math.random() * room;
+		el.currentTime = start;
+	}
+
 	async function play() {
 		if (!audio) return;
 
-		if (ended) audio.currentTime = 0;
+		// Only before the round has been heard: once it has, play means resume.
+		if (!opened && clip.random) await place(audio);
+
+		if (ended) audio.currentTime = start;
 		limited = !opened;
 		deadline = limited ? arm(audio.currentTime) : Infinity;
 
@@ -95,7 +138,14 @@
 
 <svelte:head><title>swiftster</title></svelte:head>
 
-<audio bind:this={audio} bind:paused bind:ended src="/api/tracks/{data.id}/stream" class="hidden"
+<!-- A random start needs the duration, so the metadata has to come down early. -->
+<audio
+	bind:this={audio}
+	bind:paused
+	bind:ended
+	preload="metadata"
+	src="/api/tracks/{data.id}/stream"
+	class="hidden"
 ></audio>
 
 <div class="flex flex-1 flex-col items-center justify-center gap-10 text-center">
