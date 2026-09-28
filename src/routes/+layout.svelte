@@ -2,6 +2,7 @@
 	import './layout.css';
 	import { version } from '$app/environment';
 	import ClipPicker from '$lib/components/ClipPicker.svelte';
+	import Logo from '$lib/components/Logo.svelte';
 	import RandomToggle from '$lib/components/RandomToggle.svelte';
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
@@ -25,7 +26,10 @@
 			mr-auto rather than justify-between: a name too long for the row wraps the
 			settings onto their own line, where justify-end still holds them.
 		-->
-		<a href="/" class="mr-auto text-lg font-semibold">{data.name}</a>
+		<a href="/" class="mr-auto flex items-center gap-2 text-lg font-semibold">
+			<Logo class="h-7 w-7 shrink-0" />
+			{data.name}
+		</a>
 		<RandomToggle />
 		<ClipPicker />
 	</header>
