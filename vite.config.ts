@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, loadEnv } from 'vite';
+import pkg from './package.json' with { type: 'json' };
 
 /**
  * Hosts Vite will answer to, from `ALLOWED_HOSTS` (comma-separated).
@@ -35,6 +36,12 @@ export default defineConfig(({ mode }) => {
 					runes: ({ filename }) =>
 						filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 				},
+
+				// What the footer shows, by way of `$app/environment`. The image is
+				// built from a tag that only the workflow knows — `.git` is not in the
+				// build context — so CI passes the name in and everything else falls
+				// back to package.json.
+				version: { name: env.SWIFTSTER_VERSION || pkg.version },
 
 				// A plain Node server, so the build runs anywhere: the container, or
 				// `node build` on the host. Its PORT, HOST and ORIGIN come from the

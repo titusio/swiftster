@@ -1,5 +1,6 @@
 <script lang="ts">
 	import './layout.css';
+	import { version } from '$app/environment';
 	import favicon from '$lib/assets/favicon.svg';
 	import ClipPicker from '$lib/components/ClipPicker.svelte';
 	import RandomToggle from '$lib/components/RandomToggle.svelte';
@@ -20,4 +21,14 @@
 	</header>
 
 	{@render children()}
+
+	<!-- mt-auto so the footer sits at the bottom of a short page too. -->
+	<footer class="mt-auto flex items-center justify-center gap-2 text-xs text-neutral-500">
+		<span>
+			Powered by
+			<a href="https://github.com/titusio/swiftster" class="underline underline-offset-2">swiftster</a>
+		</span>
+		<span aria-hidden="true">·</span>
+		<span>{version}</span>
+	</footer>
 </div>
