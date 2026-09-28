@@ -136,8 +136,6 @@
 	}
 </script>
 
-<svelte:head><title>swiftster</title></svelte:head>
-
 <!-- A random start needs the duration, so the metadata has to come down early. -->
 <audio
 	bind:this={audio}

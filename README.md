@@ -39,6 +39,7 @@ Then fill in `.env`:
 | `MEDIA_INDEX` | optional, where `songs.json` lives if not inside `MEDIA_DIR` |
 | `PUBLIC_ORIGIN` | the origin baked into the printed QR codes |
 | `ALLOWED_HOSTS` | hostnames Vite will serve |
+| `APP_NAME` | what the app calls itself; defaults to `swiftster` |
 
 The first three are defaults, not fixtures: `--media-dir`, `--index`, `--origin`
 and `-o` override them for a single run, which is how you index a second library
@@ -243,7 +244,8 @@ tip of `main`. Set `SWIFTSTER_TAG` in `.env` to pin to a version instead — onc
 the deck is printed, a server that only changes when you say so is the point.
 
 The same `.env` drives the container, but only as far as the host: `MEDIA_DIR`
-and `PUBLIC_ORIGIN` are read on *this* side to build the mount and the origin.
+and `PUBLIC_ORIGIN` are read on *this* side to build the mount and the origin,
+and `APP_NAME` is handed through to the server inside.
 The library is mounted read-only at `/music`, which works because `songs.json`
 stores paths relative to the library root. Keep indexing and `just qr` out here
 in the Nix shell — the image has no Python in it, only the server.

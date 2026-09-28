@@ -29,6 +29,7 @@ services:
 
     environment:
       MEDIA_DIR: /music
+      APP_NAME: ${APP_NAME:-swiftster}
       # adapter-node's idea of the public origin. Keep it identical to
       # PUBLIC_ORIGIN: that is the origin the printed QR codes point at.
       ORIGIN: ${PUBLIC_ORIGIN}

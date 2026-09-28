@@ -3,9 +3,17 @@
 	import { version } from '$app/environment';
 	import ClipPicker from '$lib/components/ClipPicker.svelte';
 	import RandomToggle from '$lib/components/RandomToggle.svelte';
+	import type { Snippet } from 'svelte';
+	import type { LayoutData } from './$types';
 
-	let { children } = $props();
+	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 </script>
+
+<svelte:head>
+	<title>{data.name}</title>
+	<!-- iOS reads the home-screen label from here in preference to the manifest. -->
+	<meta name="apple-mobile-web-app-title" content={data.name} />
+</svelte:head>
 
 <!--
 	The page frame lives here so the round settings keep their corner across a
@@ -13,6 +21,11 @@
 -->
 <div class="mx-auto flex min-h-dvh max-w-md flex-col gap-6 p-6">
 	<header class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+		<!--
+			mr-auto rather than justify-between: a name too long for the row wraps the
+			settings onto their own line, where justify-end still holds them.
+		-->
+		<a href="/" class="mr-auto text-lg font-semibold">{data.name}</a>
 		<RandomToggle />
 		<ClipPicker />
 	</header>
