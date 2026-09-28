@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 from collections.abc import Iterator
 from os.path import dirname, isfile, join
 from typing import NamedTuple
@@ -166,6 +167,24 @@ class Line(NamedTuple):
     leading: float
     space: float = 0.0
     tracking: float = 0.0
+
+
+# A downloader that tells two releases apart by catalogue number leaves the
+# number on the end of the directory, and the indexer reads the directory as
+# the album.
+ALBUM_ID = re.compile(r"-\d+$")
+
+
+def strip_album_id(album: str) -> str:
+    """
+    The album without a trailing catalogue number.
+
+    Only a hyphen and the digits at the very end come off, and never the whole
+    name, so an album titled with a bare number keeps it. An album that
+    genuinely ends in a hyphen and digits would lose that too, which is why
+    this is asked for rather than always done.
+    """
+    return ALBUM_ID.sub("", album, count=1) or album
 
 
 def back_lines(song: dict, width: float, card: float) -> list[Line]:
@@ -369,6 +388,14 @@ def parse_args() -> argparse.Namespace:
              "backs are laid out to match (default: long)",
     )
     parser.add_argument(
+        "--strip-album-id",
+        action="store_true",
+        help="drop a trailing catalogue number from the album on the back, so "
+             "a library laid out as \"An Album (Deluxe)-1234567\" prints "
+             "\"An Album (Deluxe)\"; an album whose name really ends in a "
+             "hyphen and digits loses that too",
+    )
+    parser.add_argument(
         "--module-mm",
         type=float,
         default=1.0,
@@ -434,6 +461,10 @@ def main() -> int:
     if not songs:
         print(f"no songs with an id in {index}")
         return 1
+
+    if args.strip_album_id:
+        for song in songs:
+            song["album"] = strip_album_id(str(song.get("album") or ""))
 
     output = args.output or join(dirname(index) or ".", "qr")
     os.makedirs(output, exist_ok=True)
