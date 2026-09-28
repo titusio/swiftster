@@ -91,6 +91,33 @@ def draw_qr(c: Canvas, matrix: list[list[bool]], left: float, bottom: float, siz
     c.drawPath(path, stroke=0, fill=1)
 
 
+def split(word: str, font: str, size: float, width: float) -> list[str]:
+    """
+    A word wider than the line, cut into pieces that each fit.
+
+    The cut goes after a hyphen wherever there is one, because that is the seam
+    a reader already expects: an album a downloader named after its catalogue
+    number breaks before the number rather than in the middle of a word.
+    """
+    pieces: list[str] = []
+
+    while stringWidth(word, font, size) > width:
+        at = 1
+        while at < len(word) and stringWidth(word[:at + 1], font, size) <= width:
+            at += 1
+
+        seam = word.rfind("-", 1, at)
+        if seam > 0:
+            at = seam + 1
+
+        pieces.append(word[:at])
+        word = word[at:]
+
+    if word:
+        pieces.append(word)
+    return pieces
+
+
 def wrap(text: str, font: str, size: float, width: float) -> list[str]:
     lines: list[str] = []
     line = ""
@@ -102,6 +129,13 @@ def wrap(text: str, font: str, size: float, width: float) -> list[str]:
             line = word
         else:
             line = candidate
+
+        # Only a word that is too wide on its own can be over the width here,
+        # and no amount of wrapping will place it. Cut it and carry the tail,
+        # which the words after it can still join.
+        if stringWidth(line, font, size) > width:
+            *full, line = split(line, font, size, width)
+            lines += full
 
     if line:
         lines.append(line)
@@ -156,7 +190,7 @@ def back_lines(song: dict, width: float, card: float) -> list[Line]:
     ]
 
     if album:
-        size, wrapped = fit(album, "Helvetica", card * 0.046, width, 2)
+        size, wrapped = fit(album, "Helvetica", card * 0.046, width, 3)
         lines += [
             Line(w, "Helvetica", size, GREY, size * 1.25, space=card * 0.03 if i == 0 else 0)
             for i, w in enumerate(wrapped)
@@ -202,6 +236,10 @@ def draw_back(c: Canvas, song: dict, left: float, bottom: float, card: float) ->
             text.setFillColor(line.colour)
             text.setCharSpace(line.tracking)
             text.textOut(line.text)
+            # Letter spacing is text state, and the state outlives the text
+            # object: leave it set and every line below is drawn wider than it
+            # was measured, which walks the long ones out past the padding.
+            text.setCharSpace(0)
             c.drawText(text)
         else:
             c.drawCentredString(middle, baseline, line.text)
