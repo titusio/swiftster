@@ -9,6 +9,12 @@ WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 COPY . .
+
+# The version the footer shows. It is baked into the client bundle, so it has to
+# be here at build time; the workflow passes the tag it is publishing under.
+# Below `npm ci`, so a new version does not reinstall the world to build it.
+ARG SWIFTSTER_VERSION
+ENV SWIFTSTER_VERSION=$SWIFTSTER_VERSION
 RUN npm run build
 
 # Runtime dependencies only. `prepare` runs svelte-kit sync, which isn't

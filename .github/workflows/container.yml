@@ -57,6 +57,10 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
+          # The same name the image is tagged with, so the footer and the pull
+          # agree: the version on a release, `unstable` on main, `pr-N` on a PR.
+          build-args: |
+            SWIFTSTER_VERSION=${{ steps.meta.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
