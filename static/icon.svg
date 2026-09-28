@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="#171717">
+	<!-- A favicon sits in the browser's own chrome, which is dark as often as not. -->
+	<style>
+		@media (prefers-color-scheme: dark) {
+			svg {
+				fill: #fafafa;
+			}
+		}
+	</style>
+	<path fill-rule="evenodd" d="M2 2h13v13H2zM5 5v7h7V5z" />
+	<rect x="6.5" y="6.5" width="4" height="4" />
+	<path fill-rule="evenodd" d="M17 2h13v13H17zM20 5v7h7V5z" />
+	<rect x="21.5" y="6.5" width="4" height="4" />
+	<path fill-rule="evenodd" d="M2 17h13v13H2zM5 20v7h7v-7z" />
+	<rect x="6.5" y="21.5" width="4" height="4" />
+	<path d="M20 18.5 28.5 23.5 20 28.5z" />
+</svg>

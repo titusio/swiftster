@@ -1,14 +1,11 @@
 <script lang="ts">
 	import './layout.css';
 	import { version } from '$app/environment';
-	import favicon from '$lib/assets/favicon.svg';
 	import ClipPicker from '$lib/components/ClipPicker.svelte';
 	import RandomToggle from '$lib/components/RandomToggle.svelte';
 
 	let { children } = $props();
 </script>
-
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <!--
 	The page frame lives here so the round settings keep their corner across a
