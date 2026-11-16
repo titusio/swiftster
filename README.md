@@ -254,6 +254,13 @@ The server reads the index once and keeps it, so a re-index needs a restart:
 `just serve-index` does both. If you set `MEDIA_INDEX` outside the library, add
 a mount for it in `compose.yaml`.
 
+Two endpoints report on the server itself. `/healthz` answers `ok` as long as
+the process is up. `/readyz` answers 200 only when a scan would play: the index
+loads, has tracks in it, and the library its paths point into is readable;
+otherwise it is a 503 with the reason, and the details go to the log. The
+image's healthcheck polls `/readyz`, so `podman ps` shows a container with a
+missing or mismatched library as unhealthy.
+
 Under Docker rather than rootless podman, drop `userns_mode: keep-id` from
 `compose.yaml` and make the library readable by uid 1000.
 
@@ -336,5 +343,7 @@ to use, card size, paper, margins, quiet zone, where to write.
 - `src/routes/t/[id]` — a round. It is handed the id and nothing else.
 - `src/routes/api/tracks/[id]/stream` — ranged audio streaming, so seeking
   works.
+- `src/routes/healthz`, `src/routes/readyz` — liveness and readiness, for
+  whatever watches the server.
 - `src/routes/api/tracks` — the index as JSON, for when you want to look
   something up yourself. The game never calls it.
