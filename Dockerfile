@@ -43,7 +43,10 @@ VOLUME ["/music"]
 USER node
 EXPOSE 3000
 
+# Readiness rather than liveness: nothing here restarts an unhealthy container,
+# so the status is only read, and a server whose library is missing should say
+# so instead of reporting healthy while every card scans to an error.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-    CMD wget -q --spider "http://127.0.0.1:${PORT}/" || exit 1
+    CMD wget -q --spider "http://127.0.0.1:${PORT}/readyz" || exit 1
 
 CMD ["node", "build"]
